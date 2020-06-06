@@ -1,0 +1,376 @@
+---
+title: "PEC 3"
+author: "Amelia Martínez Sequera, Sergio García Muñoz"
+date: "20/5/2020"
+output:
+  html_document: 
+    df_print: default
+    number_sections: yes
+  pdf_document: default
+  html_notebook: 
+    toc: yes
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+**Sección 1 (8 puntos)**
+
+**(1) (0.5p)** 
+
+Hemos seleccionado el conjunto de datos titulado "Insulin Secretion of Asian Indians. Studying the relative contribution of Insulin Resistance & Secretion in Diabetes". Está disponible en el sitio web de Kaggle, una comunidad online dedicada a la ciencia de datos y el machine learning. Los datos pueden consultarse o descargarse desde la dirección: 
+
+https://www.kaggle.com/jit1806/insulin-secretion-of-asian-indians
+
+Podemos decir que los motivos que nos han llevado a escoger estos datos son:
+
+- Son datos reales de una población concreta y bien definida. Pertenecen a voluntarios reclutados a partir de un programa de screening de salud "From Food to Nutrition" impulsado por la asociación sin ánimo de lucro SWANIRVAR, entre enero de 2017 y septiembre de 2018.
+- La población es bastante numerosa, lo que esperamos facilite la obtención de resultados con una significación adecuada. 
+- Recogen una gran cantidad de variables, clínicas, bioquímicas y demográficas, por lo que pensamos que de ellos se puede extraer bastante información.
+
+**(2) (0.5p)**
+
+Se trata de un fichero de datos csv (comma separated values). Utilizamos un read.csv para importarlo como dataframe. Hay que añadir el parámetro skipNul=TRUE, ya que contiene embeded null characters.
+
+```{r}
+datosdf<-read.csv("C:/Users/sergi/Desktop/Biblioteca/MÁSTER EN BIOINFORMÁTICA Y BIOESTADÍSTICA UOC UB/SOFTWARE PARA EL ANÁLISIS DE DATOS/PEC 3/sage_tae_2019_df.csv", skipNul = TRUE)
+```
+
+El fichero contiene 23 variables:
+
+```{r}
+head(datosdf)
+str(datosdf)
+```
+
+Como puede verse, hay 650 observaciones de 23 variables, la mayoría numéricas, habiendo tres que son factores y la primera que es un contador. A continuación hacemos una pequeña descripción de las mismas, así como su significado:
+
+Variables demográficas y antropométricas:
+
+**AGE**: Edad
+
+**SEX**: Sexo
+
+**BMI**: índice de masa corporal
+
+**WC**: Perímetro abdominal
+
+**Body.Fat....from.Age..BMI**: Porcentaje de grasa corporal calculado a partir de la edad y el BMI.
+
+**BMI_group**: Factor categorizando el BMI
+
+Variables bioquímicas y fisiológicas relacionadas con el perfil glucémico, lipídico y el riesgo cardiovascular:
+
+**FBS**: Glucosa plasmática en ayunas (mmol/L)
+
+**TG**: Triglicéridos (mg/dL)
+
+**TC**: Colesterol total (mg/dL)
+
+**SBP**: Presión arterial sistólica (mmHg)
+
+**DBP**: Presión arterial diastólica (mmHg)
+
+Variable que define el estado de presencia o ausencia de diabetes: 
+
+**DM_status**: Categórica con dos posibles valores: Healthy y NDM, entendido este último como diagnóstico de Diabetes tipo 2 reciente.
+
+Variables relacionadas con el estado metabólico y la resistencia a la insulina:
+
+**F.Ins.pmol.L**: Concentración plasmática en ayunas de insulina (pmol/L).
+
+**Adiponectin.microgm.ml...5000.X**: Concentración de adiponectina (ug/mL). Se trata de una hormona secretada por los adipocitos, que participa en el metabolismo de la glucosa y los ácidos grasos.
+
+**Leptin..ng.ml.**: Concentración de leptina (ng/mL). Se trata de una hormona, una adipoquina secretada mayoritariamente por los adipocitos y ejerce un feedback negativo sobre el hipotálamo para inhibir el apetito.
+
+**HOMA2..B, HOMA2..S y HOMA2.IR**: Índices HOMA (Homeostaic Model Assessment). Se trata de índices calculados a partir de los niveles de insulina y glucosa que tratan de medir el grado de resistencia a la insulina. Se han calculado tres índices, el de función de células beta pancreáticas (HOMA-B), el de sensibilidad (HOMA-S) y el de resistencia a la insulina (HOMA-IR).
+
+El resto de variables son iguales a otras ya descritas pero expresadas en unidades convencionales en lugar de unidades SI.
+
+**(3) (1.5 p)**
+
+**P1.** ¿Qué valores medios presentan las variables bioquímicas y fisiológicas según presencia de diabetes o no, categoría de índice de masa corporal y sexo? Presentar en formato tabla calculando sus intervalos de confianza.
+
+Utilizamos la función tabular() contenida en el paquete tables, ya que permite de una manera sencilla crear tablas con selecciones de datos y aplicando funciones. Para hallar la media, creamos una función "Media" con el argumento na.rm=TRUE, para que no tenga en cuenta los valores NA presentes en algunos datos. Para calcular los intervalos de confianza creamos otra función "IC" que usa t.test para calcularlos y devuelve el resultado en forma de cadena de valores separados por un guión. Tanto a la función "Media" como a "IC" se les aplica un round para limitar el número de decimales. Por último, creamos la tabla con ayuda de la librería kableExtra y le damos formato.
+
+```{r}
+library(tables)
+library(magrittr)
+library(kableExtra)
+attach(datosdf)
+Media <- function(x){
+  round(mean(x, na.rm=TRUE), 1)
+  }
+IC <- function(x){
+ int<-c(t.test(x)$conf.int)
+  result<-paste(round(int[1],1),round(int[2],1), sep="-")
+  return(result)
+}
+biofis<- tabular ((DM_status*BMI_group*SEX) ~ (FBS+TG+TC+SBP+DBP)*(Media+IC))
+biofis_kable<-toKable(biofis)
+kable_styling(biofis_kable, full_width = TRUE, bootstrap_options="striped", row_label_position="c")
+```
+
+**P2.** ¿Cuántos individuos hay que sean diabéticos y de sexo femenino, y que tengan una concentración de glucosa plasmática por encima de 200 mg/dL, y y qué porcentaje representan respecto al total de individuos de sexo femenino? ¿Y si ahora consideramos el sexo masculino? ¿Cuáles son las concentraciones mínima y máxima de glucosa en todos los pacientes? ¿Qué porcentaje de pacientes obesos tienen niveles de insulina elevados si consideramos un nivel de insulina elevado aquel que sea superior al percentil 95 de los individuos sanos?
+
+Podemos hacer este tipo de consultas usando SQL. Para ello, cargamos las librerías sqldf y usamos SELECT con WHERE e IF. Es importante tener en cuenta que sqldf trabaja con dataframes y que cualquier variable que participe debe estar dentro del dataframe, o bien incorporarse como un dataframe en sí. Para responder a la última pregunta hemos tenido que convertir el percentil 95 de la concentración de insulina en personas sanas (In_S95) en un data frame, para poder incluirlo en el SELECT correspondiente que selecciona los valores de insulina en pacientes obesos por encima de este percentil.
+
+```{r}
+library(sqldf)
+#Seleccionamos el sexo de los casos con glucosa>200, diabetes y sexo femenino, y usamos un nrow para contar el número de casos:
+DM_SF<-nrow(sqldf("SELECT SEX FROM datosdf WHERE FBS>200 AND DM_status='NDM' AND SEX='F'"))
+DM_SFp<-DM_SF/nrow(sqldf("SELECT FBS FROM datosdf WHERE SEX='F' AND DM_status='NDM'"))*100
+
+paste("El número de mujeres diabéticas con glucosa > 200 mg/dL es:",DM_SF,"y representan un",round(DM_SFp, 1),"% del total de mujeres diabéticas")
+
+#Hacemos lo mismo con el sexo masculino:
+DM_SM<-nrow(sqldf("SELECT SEX FROM datosdf WHERE FBS>200 AND DM_status='NDM' AND SEX='M'"))
+DM_SMp<-DM_SM/nrow(sqldf("SELECT FBS FROM datosdf WHERE SEX='M' AND DM_status='NDM'"))*100
+
+paste("El número de hombres diabéticos con glucosa > 200 mg/dL es:",DM_SM,"y representan un",round(DM_SMp, 1),"% del total de hombres diabéticos")
+
+paste("La concentración máxima de glucosa es:", round(max(FBS), 1), "mg/dL","y la mínima: ", round(min(FBS), 1), "mg/dL")
+
+#Seleccionamos niveles de insulina de sujetos sanos y calculamos el percentil 95. Posteriormente lo usamos para seleccionar los obsesos con niveles superiores a este percentil:
+In_S<-sqldf("SELECT Ins FROM datosdf WHERE DM_status='Healthy'")
+In_S95<-quantile(In_S[,1], probs = 0.95)
+In_S95<-as.data.frame(In_S95)
+In_Ob<-fn$sqldf("SELECT Ins FROM datosdf, In_S95 WHERE BMI_group='Obese' AND Ins > In_S95")
+In_Obp<-nrow(In_Ob)/nrow(sqldf("SELECT Ins FROM datosdf WHERE BMI_group='Obese'"))*100
+
+paste("El porcentaje de obesos con niveles de insulina superiores al percentil 95 de los niveles de pacientes sanos es:", round(In_Obp, 1),"%")
+```
+
+
+**P3.** El síndrome metabólico se define como un conjunto de factores que conllevan un aumento del riesgo de padecer una enfermedad cardiovascular o diabetes mellitus tipo 2. La European Group for the Study of Insulin Resistance lo define mediante los siguientes criterios:
+1. presencia del fenómeno de resistencia a la insulina (incremento del 25% de los valores de insulina en ayunas entre los individuos no-diabéticos)
+2. Presencia de dos o más de los siguientes factores:
+- Obesidad central: diámetro de cintura ≥ 94 cm (en hombres), ≥ 80 cm (en mujeres).
+- Dislipidemia: TG ≥ 177 mg/dL y/o HDL-C < 1.0 mg/dL, o ser tratado por dislipidemia.
+- Hipertensión arterial: ≥ 140/90 mmHg o estar bajo tratamiento antihipertensivo
+- Hemoglobina glicosilada ≥ 6.1 mmol/L.
+
+En base a los datos disponibles, cuántos individuos no serían diabéticos pero padecerían síndrome metabólico?
+
+En primer lugar calculamos la insulina media de los sujetos sanos, después seleccionamos el grupo de interés (sanos, excluyendo diabéticos) mediante un SELECT. Por último creamos una función que nos permita evaluar este o cualquier otro grupo de pacientes, que contiene un IF con todas las condiciones del síndrome metabólico:
+
+```{r}
+#Calculamos la media de los valores de insulina entre los sujetos sanos:
+In_Sm<-mean(In_S[,1])
+#Seleccionamos los individuos sanos:
+healthy<-sqldf("SELECT * FROM datosdf WHERE DM_Status='Healthy'")
+healthy<-na.omit(healthy)
+#Creamos la función que crea un dataframe con todos los datos de los casos que cumplen criterios de síndrome metabólico:
+MS<-function(x) {
+  res<-c()
+  for(i in 1:nrow(x)){
+        if(
+
+(x$Ins[i]>1.25*In_Sm 
+& ((x$SEX[i]=="F" & x$WC[i]>=80) || (x$SEX[i]=="M" & x$WC[i]>=94))
+& x$TG[i]>=177)||
+
+(x$Ins[i]>1.25*In_Sm
+& ((x$SEX[i]=="F" & x$WC[i]>=80) || (x$SEX[i]=="M" & x$WC[i]>=94))
+& x$SBP[i]>=140 & x$DBP[i]>=90)||
+
+(x$Ins[i]>1.25*In_Sm
+& x$TG[i]>=177 & x$SBP[i]>=140 & x$DBP[i]>=90)
+
+)
+{res<-rbind(res, x[i,])} 
+}
+  return(res)
+}
+
+Heal_MS<-MS(healthy)
+paste("El número de individuos no diabéticos que padecen síndrome metabólico es de:", nrow(Heal_MS))
+```
+
+
+**P4.** ¿Cuáles son los valores medios de las variables bioquímicas relacionadas con el metabolismo carbohidrato y lipídico, así como las relacionadas con la resistencia a la insulina en el grupo de pacientes diabéticos? ¿Y en los no diabéticos con síndrome metabólico? ¿Y en los sanos (no diabéticos y sin síndrome metabólico)? Acompañar las medias de sus correspondientes IC.
+
+Nuevamente usamos SQL y después un loop para construir un dataframe con la media y el IC de aquellos casos que cumplen lascondiciones requeridas. Después construimos tablas con kable. Para el caso de los sanos hay que introducir un paso adicional, que ha consistido en crear un subset usando la condición de que NO se cumplan los criterios de síndrome metabólico:
+
+```{r}
+bioq_DM<- sqldf("SELECT FBS, TG, TC, Ins, HOMA_B, HOMA_IR, `HOMA2..B`, `HOMA2..S`, `HOMA2.IR`, `Adiponectin.microgm.ml...5000.X.`, `Leptin..ng.ml.` FROM datosdf WHERE DM_status=='NDM'")
+bioq_DM_m<-c()
+for(i in 1:ncol(bioq_DM)) {
+    m<-Media(bioq_DM[,i])
+    ic<-IC(bioq_DM[,i])
+    bioq_DM_m<-cbind(bioq_DM_m, m, ic)
+}
+cnames<-c("Glucosa", "IC", "Triglicéridos", "IC", "Colesterol", "IC","Insulina", "IC", "HOMA_B", "IC", "HOMA_IR", "IC", "HOMA2_B", "IC", "HOMA2_S", "IC", "HOMA2_IR", "IC", "Adiponectina", "IC", "Leptina", "IC")
+colnames(bioq_DM_m)<-cnames
+kable(bioq_DM_m, align = "c", padding=5, format = "pandoc", caption = "Medias parámetros bioquímicos y de resistencia a insulina en individuos diabéticos")
+
+bioq_HeMS<- sqldf("SELECT FBS, TG, TC, Ins, HOMA_B, HOMA_IR, `HOMA2..B`, `HOMA2..S`, `HOMA2.IR`, `Adiponectin.microgm.ml...5000.X.`, `Leptin..ng.ml.` FROM Heal_MS")
+bioq_HeMS_m<-c()
+for(i in 1:ncol(bioq_HeMS)) {
+    m<-Media(bioq_HeMS[,i])
+    ic<-IC(bioq_HeMS[,i])
+    bioq_HeMS_m<-cbind(bioq_HeMS_m, m, ic)
+}
+cnames<-c("Glucosa", "IC", "Triglicéridos", "IC", "Colesterol", "IC","Insulina", "IC", "HOMA_B", "IC", "HOMA_IR", "IC", "HOMA2_B", "IC", "HOMA2_S", "IC", "HOMA2_IR", "IC", "Adiponectina", "IC", "Leptina", "IC")
+colnames(bioq_HeMS_m)<-cnames
+kable(bioq_HeMS_m, align = "c", padding=5, format = "pandoc", caption = "Medias parámetros bioquímicos y de resistencia a insulina en individuos no diabéticos con síndrome metabolico")
+
+#Definimos un subset del dataframe healthy que contiene todos los individuos sin diabetes aplicando la condición de que NO cumplan lo requisitos para tener síndrome metabólico. Posteriormente continuamos como en los apartados anteriores:
+
+Heal_NoMS<-subset.data.frame(healthy, subset =! (Ins>1.25*In_Sm
+                       & ((SEX=="F" & WC>=80) || (SEX=="M" & WC>=94)& TG>=177)||
+                                                  (Ins>1.25*In_Sm
+               & ((SEX=="F" & WC>=80) || (SEX=="M" & WC>=94)) & SBP>=140 & DBP>=90)||
+                                                 (Ins>1.25*In_Sm
+                      & TG>=177 & SBP>=140 & DBP>=90)))
+
+bioq_HeNoMS<- sqldf("SELECT FBS, TG, TC, Ins, HOMA_B, HOMA_IR, `HOMA2..B`, `HOMA2..S`, `HOMA2.IR`, `Adiponectin.microgm.ml...5000.X.`, `Leptin..ng.ml.` FROM Heal_NoMS")
+
+bioq_HeNoMS_m<-c()
+for(i in 1:ncol(bioq_HeNoMS)) {
+    m<-Media(bioq_HeNoMS[,i])
+    ic<-IC(bioq_HeNoMS[,i])
+    bioq_HeNoMS_m<-cbind(bioq_HeNoMS_m, m, ic)
+}
+cnames<-c("Glucosa", "IC", "Triglicéridos", "IC", "Colesterol", "IC","Insulina", "IC", "HOMA_B", "IC", "HOMA_IR", "IC", "HOMA2_B", "IC", "HOMA2_S", "IC", "HOMA2_IR", "IC", "Adiponectina", "IC", "Leptina", "IC")
+colnames(bioq_HeNoMS_m)<-cnames
+kable(bioq_HeNoMS_m, align = "c", padding=5, format = "pandoc", caption = "Medias parámetros bioquímicos y de resistencia a insulina en individuos no diabéticos sin síndrome metabolico")
+```
+
+
+**P5.** ¿Cuáles son los valores medios de las variables bioquímicas relacionadas con el metabolismo carbohidrato y lipídico, así como las relacionadas con la resistencia a la insulina en el grupo de pacientes obesos y diabéticos? ¿Y en el de los obesos no diabéticos pero con síndrome metabólico? ¿Entre los individuos obesos del estudio, qué proporción son diabéticos, qué proporción tienen síndrome metabólico sin ser diabéticos y qué  proporción son sanos? Acompañar las medias de sus correspondientes IC.
+
+```{r}
+# Operamos como en la pregunta 4 pero añadiendo la condición de que los sujetos sean obesos:
+bioq_DM_Ob<- sqldf("SELECT FBS, TG, TC, Ins, HOMA_B, HOMA_IR, `HOMA2..B`, `HOMA2..S`, `HOMA2.IR`, `Adiponectin.microgm.ml...5000.X.`, `Leptin..ng.ml.` FROM datosdf WHERE DM_status=='NDM' AND BMI_group=='Obese'")
+bioq_DM_Ob_m<-c()
+for(i in 1:ncol(bioq_DM_Ob)) {
+    m<-Media(bioq_DM_Ob[,i])
+    ic<-IC(bioq_DM_Ob[,i])
+    bioq_DM_Ob_m<-cbind(bioq_DM_Ob_m, m, ic)
+}
+cnames<-c("Glucosa", "IC", "Triglicéridos", "IC", "Colesterol", "IC","Insulina", "IC", "HOMA_B", "IC", "HOMA_IR", "IC", "HOMA2_B", "IC", "HOMA2_S", "IC", "HOMA2_IR", "IC", "Adiponectina", "IC", "Leptina", "IC")
+colnames(bioq_DM_Ob_m)<-cnames
+kable(bioq_DM_Ob_m, align = "c", padding=5, format = "pandoc", caption = "Medias parámetros bioquímicos y de resistencia a insulina en individuos obesos y diabéticos")
+
+#Para seleccionar pacientes no diabéticos con síndrome metabólico y obesos podemos usar el dataframe donde están recogidos todos los que tienen síndrome metabólico y seleccionar por BMI_group:
+bioq_nDM_MS_Ob<- sqldf("SELECT FBS, TG, TC, Ins, HOMA_B, HOMA_IR, `HOMA2..B`, `HOMA2..S`, `HOMA2.IR`, `Adiponectin.microgm.ml...5000.X.`, `Leptin..ng.ml.` FROM Heal_MS WHERE BMI_group=='Obese'")
+#Aplicamos un loop para calcular las medias e IC a cada varaible de la selección:
+bioq_nDM_MS_Ob_m<-c()
+for(i in 1:ncol(bioq_nDM_MS_Ob)) {
+    m<-Media(bioq_nDM_MS_Ob[,i])
+    ic<-IC(bioq_nDM_MS_Ob[,i])
+    bioq_nDM_MS_Ob_m<-cbind(bioq_nDM_MS_Ob_m, m, ic)
+}
+cnames<-c("Glucosa", "IC", "Triglicéridos", "IC", "Colesterol", "IC","Insulina", "IC", "HOMA_B", "IC", "HOMA_IR", "IC", "HOMA2_B", "IC", "HOMA2_S", "IC", "HOMA2_IR", "IC", "Adiponectina", "IC", "Leptina", "IC")
+colnames(bioq_nDM_MS_Ob_m)<-cnames
+kable(bioq_nDM_MS_Ob_m, align = "c", padding=5, format = "pandoc", caption = "Medias parámetros bioquímicos y de resistencia a insulina en individuos obesos, NO diabéticos, CON síndrome metabólico")
+
+#Para conocer la proporción de individuos obesos que tienen diabetes, los que tienen síndrome metabólico y los que son sanos, calculamos el número de obesos total y el de obesos diabéticos en datosdf, el número de obesos no diabéticos pero con síndrome metabólico en Heal_MS, y el de obesos sanos Heal_NoMS. Para ello hacemos subsets con las condiciones de interés y contamos filas. Hay que tener en cuenta que los porcentajes no sumarán 100 debido a los casos en los que no se ha podido determinar la presencia de síndrome metabólico por falta de datos. 
+
+pOb_SM<-nrow(subset.data.frame(Heal_MS, subset = (BMI_group=='Obese'))) / nrow(subset.data.frame(datosdf, subset = (BMI_group=='Obese')))*100
+pOb_DM<-nrow(subset.data.frame(datosdf, subset = (BMI_group=='Obese' & DM_status=='NDM'))) / nrow(subset.data.frame(datosdf, subset = (BMI_group=='Obese')))*100
+pOb_H<-nrow(subset.data.frame(Heal_NoMS, subset = (BMI_group=='Obese'))) / nrow(subset.data.frame(datosdf, subset = (BMI_group=='Obese')))*100
+
+paste("Entre los individuos obesos, son diabéticos el",round(pOb_DM, 1),"%.")
+paste("Entre los individuos obesos, tienen síndrome metabólico el",round(pOb_SM, 1),"%.")
+paste("Entre los individuos obesos, son sanos el",round(pOb_H, 1),"%.")
+```
+
+
+**P6.** El estándar de oro para medir la sensibilidad a la insulina corporal total se denomina clamp hiperinsulinémico-euglucémico, pero se trata de un procedimiento complejo y no se usa en la práctica. En su lugar se emplea el índice HOMA-IR. 
+Se suele emplear un valor de 2,6 como punto de corte para diagnosticar la resistencia a la insulina, resultando útil, sobre todo, para evaluar dicha resistencia en pacientes con normoglucemia.
+Posteriormente, un modelo actualizado (HOMA2) añadió los efectos de la resistencia a la glucosa hepática y periférica, las variaciones que se producen en la secreción de insulina a concentraciones de glucosa elevadas, así como la contribución de la proinsulina circulante.
+¿Cuáles son los valores medios y sus IC de HOMA-IR y HOMA2_IR en cada uno de los siguientes grupos?:
+
+- No diabéticos, no obesos
+- No diabéticos, obesos
+- Diabéticos, no obesos
+- Diabéticos, obesos
+
+```{r}
+# Hacemos uso nuevamente de tabular y toKable:
+homa_ir<- tabular ((DM_status*BMI_group) ~ (HOMA_IR+HOMA2.IR)*(Media+IC))
+homa_ir_kable<-toKable(homa_ir)
+kable_styling(homa_ir_kable, full_width = TRUE, bootstrap_options="striped", row_label_position="c")
+```
+
+**(4) (1.5p)**
+
+Para el resumen paramétrico usamos un summary:
+
+```{r}
+summary(datosdf)
+```
+
+Representamos histogramas de frecuencias de variables que nos puede interesar conocer cómo se distribuyen. La función hist.dataframe del paquete Hmisc hace histogramas con todas las variables del dataframe
+
+```{r}
+library(Hmisc)
+hist.data.frame(datosdf)
+#A partir de la anterior, seleccionamos algunas variables que puedan interesar más:
+par(mfrow=c(3,3))
+hist(FBS, main="Glucosa plasmática", breaks=50, col="cadetblue1")
+hist(TG, main="Triglicéridos", breaks=50, col="cadetblue2")
+hist(TC, main="Colesterol total", breaks=50, col="cadetblue3")
+hist(Ins, main = "Insulina", breaks=50, col="olivedrab1")
+hist(Adiponectin.microgm.ml...5000.X., main = "Adiponectina", breaks=50, col="olivedrab2")
+hist(Leptin..ng.ml., main = "Leptina", breaks=50, col="olivedrab3")
+```
+
+Representamos diagramas de cajas que ayuden a visualizar gráficamente las tablas de medias que hemos construido en los apartados anteriores. Usamos ggplot2 con un facet_grid, que es muy útil para dividir por variables los gráficos de manera sencilla:
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+#Boxplots glucosa plasmática según estatus diabético, índice de masa corporal y sexo
+box_FBS<-ggplot(datosdf, aes(x=SEX, y=FBS))+
+  geom_boxplot(fill="cyan2")+
+  facet_grid(BMI_group~DM_status)+
+  labs(title ="Niveles de glucosa según estatus diabético, índice de masa corporal y sexo", x = "Healthy: sanos; NDM: Diabéticos, M:hombres, F:mujeres", y = "Concentración plasmática de glucosa (mg/dL)")+
+  theme_minimal()
+box_FBS
+```
+
+Representamos gráficos con 3 variables usando levelplot, una función incluída en el paquete lattice. Construye gráficos de niveles en un diagrama 2D en el que la tercera varaibles se representa mediante una escala de colores. Para poder añadir una leyenda a la escala de colores es necesario usar una función adicional, trellis.focus.
+Usamos estas representaciones para visualizar niveles de insulina en según el estado diabético y las distintas variables asociadas a adiposidad (WC, BMI, leptina y adiponectina):
+
+```{r}
+#Levelplot multivariable: Insulinemia según distintas combinaciones de parámetros de adiposidad, para diabéticos y no diabéticos).
+library(lattice)
+library(colorspace)
+levelplot(Ins~WC*Adiponectin.microgm.ml...5000.X.|DM_status, data=datosdf, cuts = 80, col.regions = sequential_hcl(100, rev = T),
+form="fit", xlab = "Perímetro de cintura (cm)", ylab = "Adiponectina (ng/mL)", main=" Insulinemia según perímetro de cintura y adiponectina")
+trellis.focus("legend", side="right", clipp.off=TRUE, highlight=FALSE)
+grid::grid.text(expression(Insulina (IU/mL)), 0.2, 0, hjust=0.6, vjust=1.5)
+
+levelplot(Ins~Leptin..ng.ml.*Adiponectin.microgm.ml...5000.X.|DM_status, data=datosdf, cuts = 80, col.regions = sequential_hcl(100, rev = T),
+form="fit", xlab = "Leptina (ng/mL)", ylab = "Adiponectina (ng/mL)", main="Insulinemia según concentraciones de leptina y adiponectina")
+trellis.focus("legend", side="right", clipp.off=TRUE, highlight=FALSE)
+grid::grid.text(expression(Insulina (IU/mL)), 0.2, 0, hjust=0.6, vjust=1.5)
+
+levelplot(Ins~Leptin..ng.ml.*BMI|DM_status, data=datosdf, cuts = 80, col.regions = sequential_hcl(100, rev = T),
+form="fit", xlab = "Leptina (ng/mL)", ylab = "Índice de masa corporal", main="Insulinemia según índice de masa corporal y adiponectina")
+trellis.focus("legend", side="right", clipp.off=TRUE, highlight=FALSE)
+grid::grid.text(expression(Insulina (IU/mL)), 0.2, 0, hjust=0.6, vjust=1.5)
+
+#Podemos afinar más si usamos un subset como el de los datos bioquímicos de los individuos diabéticos y obesos. Representamos en este caso la resistencia a insulina (índice HOMA.IR) según niveles de leptina y adiponectina, pero dentro del grupo de los obesos con diabetes:
+
+levelplot(HOMA2.IR~Leptin..ng.ml.*Adiponectin.microgm.ml...5000.X., data=bioq_DM_Ob, cuts = 80, col.regions = sequential_hcl(100, rev = T),
+form="fit", xlab = "Leptina (ng/mL)", ylab = "Adiponectina (ng/mL)", main="HOMA.IR según leptina y adiponectina en diabéticos obesos")
+trellis.focus("legend", side="right", clipp.off=TRUE, highlight=FALSE)
+grid::grid.text(expression(HOMA_IR), 0.2, 0, hjust=0.6, vjust=1.5)
+
+#Y compararlo con los obesos no diabéticos pero con síndrome metabólico:
+
+levelplot(HOMA_IR~Leptin..ng.ml.*Adiponectin.microgm.ml...5000.X., data=bioq_nDM_MS_Ob, cuts = 80, col.regions = sequential_hcl(100, rev = T),
+form="fit", xlab = "Leptina (ng/mL)", ylab = "Adiponectina (ng/mL)", main="HOMA.IR según leptina y adiponectina en no diabético obesos con s. metabólico")
+trellis.focus("legend", side="right", clipp.off=TRUE, highlight=FALSE)
+grid::grid.text(expression(HOMA_IR), 0.2, 0, hjust=0.6, vjust=1.5)
+trellis.unfocus()
+
+```
+
